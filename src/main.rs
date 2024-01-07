@@ -1,4 +1,3 @@
-#[warn(non_snake_case)]
 use colored::{Color, Colorize};
 use crossterm::execute;
 use crossterm::terminal;
@@ -232,11 +231,10 @@ fn change_color(config: SessionConfig) {
 fn main() {
     let mut config: SessionConfig;
 
-    let mut chapters: Vec<Chapter> = vec![];
     loop {
         config = confy::load("RRlCliReader", "SessionConfig").unwrap_or_default();
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
-        chapters = main_menu(&mut config);
+        let chapters = main_menu(&mut config);
         if chapters.len() == 0 {
             continue;
         }
