@@ -95,7 +95,7 @@ fn display_menu() {
 fn load_book(config: SessionConfig) -> Vec<Chapter> {
     let mut book_id: u64;
     let mut book_name = String::new();
-    let mut chapter_id: u64;
+    let chapter_id: u64;
     let mut response: String;
     loop {
         let mut option = String::new();
@@ -169,11 +169,6 @@ fn load_book(config: SessionConfig) -> Vec<Chapter> {
                 }
             }
         }
-        if chapters.iter().any(|chapter| chapter.id == chapter_id) {
-            break;
-        } else {
-            println!("Invalid chapter id");
-        }
     }
 
     let new_config = SessionConfig {
@@ -240,6 +235,7 @@ fn main() {
     let mut chapters: Vec<Chapter> = vec![];
     loop {
         config = confy::load("RRlCliReader", "SessionConfig").unwrap_or_default();
+        execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
         chapters = main_menu(&mut config);
         if chapters.len() == 0 {
             continue;
@@ -260,6 +256,13 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
     let mut title: String;
     let mut filtered_data: String;
     loop {
+        let new_config = SessionConfig {
+            book_name: config.book_name.clone(),
+            book_id: config.book_id.clone(),
+            chapter_id: chapter.id.clone(),
+            color: config.color.clone(),
+        };
+        confy::store("RRlCliReader", "SessionConfig", new_config).unwrap();
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
         filtered_data = filter_content(url.clone());
         title = chapter.title.clone();
@@ -319,7 +322,7 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
                             chapter.title
                         );
                     }
-                    let mut change = false;
+
                     loop {
                         println!("Enter chapter id(enter exit to go back, enter to start from beginning): ");
                         let mut option = String::new();
@@ -327,20 +330,23 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
                             .read_line(&mut option)
                             .expect("Failed to read line");
                         if option.trim() == "exit" {
-                            change = true;
                             break;
                         } else if option.trim() == "" {
                             chapter = chapters[0].clone();
+                            chapter_number = chapter.order;
                             url = format!("https://www.royalroad.com{}", chapter.url);
-                            change = true;
                             break;
                         } else {
                             match option.trim().parse::<u64>() {
                                 Ok(n) => {
                                     if chapters.iter().any(|chapter| chapter.id == n) {
-                                        chapter = chapters[n as usize].clone();
+                                        chapter = chapters
+                                            .iter()
+                                            .find(|chapter| chapter.id == n)
+                                            .unwrap()
+                                            .clone();
+                                        chapter_number = chapter.order;
                                         url = format!("https://www.royalroad.com{}", chapter.url);
-                                        change = true;
                                         break;
                                     } else {
                                         println!("Invalid chapter id");
@@ -354,9 +360,8 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
                             }
                         }
                     }
-                    if change {
-                        break;
-                    }
+
+                    break;
                 }
                 _ => {
                     println!("Invalid option");
