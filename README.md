@@ -25,7 +25,7 @@ Use the provided options (`P`, `B`, `C`, `Q`) to continue a previous book, load 
 
 ### Read Chapters
 
-Once a book is loaded, navigate through chapters using the options displayed. Press enter to progress through the story.
+Once a book is loaded, navigate through chapters using the options displayed. Press enter to progress through the story,  and type exit to bo back to the menu.
 
 ## Usage
 
