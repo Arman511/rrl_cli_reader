@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'RRlCliReader'",
+            "name": "Debug executable 'rrl_cli_reader'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=RRlCliReader",
-                    "--package=RRlCliReader"
+                    "--bin=rrl_cli_reader",
+                    "--package=rrl_cli_reader"
                 ],
                 "filter": {
-                    "name": "RRlCliReader",
+                    "name": "rrl_cli_reader",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'RRlCliReader'",
+            "name": "Debug unit tests in executable 'rrl_cli_reader'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=RRlCliReader",
-                    "--package=RRlCliReader"
+                    "--bin=rrl_cli_reader",
+                    "--package=rrl_cli_reader"
                 ],
                 "filter": {
-                    "name": "RRlCliReader",
+                    "name": "rrl_cli_reader",
                     "kind": "bin"
                 }
             },

@@ -3,6 +3,7 @@ use crossterm::execute;
 use crossterm::terminal;
 use serde::{Deserialize, Serialize};
 use std::io::stdout;
+mod search;
 
 #[derive(Serialize, Deserialize)]
 pub struct SessionConfig {
@@ -77,10 +78,61 @@ fn main_menu(config: &SessionConfig) -> Vec<Chapter> {
             }
             "P" => return get_chapters(local_config.book_id.clone()),
             "C" => change_color(local_config.clone()),
+            "L" => {
+                let book_id: u64 = find_book();
+                if book_id == 0 {
+                    continue;
+                }
+                let chapters = get_chapters(book_id);
+                return chapters;
+            }
             _ => println!("Invalid option"),
         }
 
-        local_config = confy::load("RRlCliReader", "SessionConfig").unwrap_or_default();
+        local_config = confy::load("rrl_cli_reader", "SessionConfig").unwrap_or_default();
+    }
+}
+
+fn find_book() -> u64 {
+    loop {
+        println!("1: Search by title");
+        println!("2: Search by author");
+        println!("3: Search by tag");
+        println!("4: Search by genre");
+        println!("5: Search by rating");
+        println!("6: Search by word count");
+        println!("7: Go back");
+        let mut option = String::new();
+        println!("Enter option: ");
+        std::io::stdin()
+            .read_line(&mut option)
+            .expect("Failed to read line");
+        option = option.trim().to_string();
+        match option.as_str() {
+            "1" => return search::search_by_title(),
+            "2" => {
+                return search::search_by_author();
+            }
+            "3" => {
+                return search::search_by_tag();
+            }
+            "4" => {
+                return 0;
+            }
+            "5" => {
+                return 0;
+            }
+            "6" => {
+                return 0;
+            }
+            "7" => {
+                return 0;
+            }
+            _ => {
+                println!("Invalid option");
+                continue;
+            }
+        }
     }
 }
 
@@ -88,6 +140,7 @@ fn display_menu() {
     println!("P: Continue previous book");
     println!("B: Load book");
     println!("C: Change colour of text");
+    println!("L: Browse books");
     println!("Q: Quit");
 }
 
@@ -140,6 +193,22 @@ fn load_book(config: SessionConfig) -> Vec<Chapter> {
             chapter.title
         );
     }
+    chapter_id = get_chapter_id(chapters.clone());
+    if chapter_id == 0 {
+        return vec![];
+    }
+
+    let new_config = SessionConfig {
+        book_name: book_name.trim().to_string(),
+        book_id: book_id,
+        chapter_id: chapter_id,
+        color: config.color.clone(),
+    };
+    confy::store("rrl_cli_reader", "SessionConfig", new_config).unwrap();
+    chapters
+}
+
+fn get_chapter_id(chapters: Vec<Chapter>) -> u64 {
     loop {
         println!("Enter chapter id(enter exit to go back, enter to start from beginning): ");
         let mut option = String::new();
@@ -147,16 +216,14 @@ fn load_book(config: SessionConfig) -> Vec<Chapter> {
             .read_line(&mut option)
             .expect("Failed to read line");
         if option.trim() == "exit" {
-            return vec![];
+            return 0;
         } else if option.trim() == "" {
-            chapter_id = chapters[0].id;
-            break;
+            return chapters[0].id;
         } else {
             match option.trim().parse::<u64>() {
                 Ok(n) => {
                     if chapters.iter().any(|chapter| chapter.id == n) {
-                        chapter_id = n;
-                        break;
+                        return n;
                     } else {
                         println!("Invalid chapter id");
                         continue;
@@ -169,15 +236,6 @@ fn load_book(config: SessionConfig) -> Vec<Chapter> {
             }
         }
     }
-
-    let new_config = SessionConfig {
-        book_name: book_name.trim().to_string(),
-        book_id: book_id,
-        chapter_id: chapter_id,
-        color: config.color.clone(),
-    };
-    confy::store("RRlCliReader", "SessionConfig", new_config).unwrap();
-    chapters
 }
 
 fn get_chapters(book_id: u64) -> Vec<Chapter> {
@@ -225,20 +283,23 @@ fn change_color(config: SessionConfig) {
         chapter_id: config.chapter_id.clone(),
         color: color.trim().to_string(),
     };
-    confy::store("RRlCliReader", "SessionConfig", new_config).unwrap();
+    confy::store("rrl_cli_reader", "SessionConfig", new_config).unwrap();
 }
 
 fn main() {
     let mut config: SessionConfig;
 
     loop {
-        config = confy::load("RRlCliReader", "SessionConfig").unwrap_or_default();
+        config = confy::load("rrl_cli_reader", "SessionConfig").unwrap_or_default();
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
         let chapters = main_menu(&mut config);
         if chapters.len() == 0 {
+            println!("No chapters found - press enter to continue");
+            std::io::stdin().read_line(&mut String::new()).unwrap();
             continue;
         }
-
+        execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
+        config = confy::load("rrl_cli_reader", "SessionConfig").unwrap_or_default();
         show_book_page(config.clone(), &chapters);
     }
 }
@@ -249,8 +310,8 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
         .find(|chapter| chapter.id == config.chapter_id)
         .unwrap()
         .clone();
-    let mut url = format!("https://www.royalroad.com{}", chapter.url);
-    let mut chapter_number = chapter.order;
+    let mut url: String;
+    let mut chapter_number: u64;
     let mut title: String;
     let mut filtered_data: String;
     loop {
@@ -260,8 +321,10 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
             chapter_id: chapter.id.clone(),
             color: config.color.clone(),
         };
-        confy::store("RRlCliReader", "SessionConfig", new_config).unwrap();
+        confy::store("rrl_cli_reader", "SessionConfig", new_config).unwrap();
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
+        chapter_number = chapter.order;
+        url = format!("https://www.royalroad.com{}", chapter.url);
         filtered_data = filter_content(url.clone());
         title = chapter.title.clone();
         println!(
@@ -295,7 +358,6 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
                     } else {
                         chapter_number -= 1;
                         chapter = chapters[chapter_number as usize].clone();
-                        url = format!("https://www.royalroad.com{}", chapter.url);
                         break;
                     }
                 }
@@ -305,7 +367,6 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
                     } else {
                         chapter_number += 1;
                         chapter = chapters[chapter_number as usize].clone();
-                        url = format!("https://www.royalroad.com{}", chapter.url);
                         break;
                     }
                 }
@@ -320,45 +381,15 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
                             chapter.title
                         );
                     }
-
-                    loop {
-                        println!("Enter chapter id(enter exit to go back, enter to start from beginning): ");
-                        let mut option = String::new();
-                        std::io::stdin()
-                            .read_line(&mut option)
-                            .expect("Failed to read line");
-                        if option.trim() == "exit" {
-                            break;
-                        } else if option.trim() == "" {
-                            chapter = chapters[0].clone();
-                            chapter_number = chapter.order;
-                            url = format!("https://www.royalroad.com{}", chapter.url);
-                            break;
-                        } else {
-                            match option.trim().parse::<u64>() {
-                                Ok(n) => {
-                                    if chapters.iter().any(|chapter| chapter.id == n) {
-                                        chapter = chapters
-                                            .iter()
-                                            .find(|chapter| chapter.id == n)
-                                            .unwrap()
-                                            .clone();
-                                        chapter_number = chapter.order;
-                                        url = format!("https://www.royalroad.com{}", chapter.url);
-                                        break;
-                                    } else {
-                                        println!("Invalid chapter id");
-                                        continue;
-                                    }
-                                }
-                                Err(_) => {
-                                    println!("Invalid chapter id");
-                                    continue;
-                                }
-                            }
-                        }
+                    let chapter_id = get_chapter_id(chapters.clone());
+                    if chapter_id == 0 {
+                        break;
                     }
-
+                    chapter = chapters
+                        .iter()
+                        .find(|chapter| chapter.id == chapter_id)
+                        .unwrap()
+                        .clone();
                     break;
                 }
                 _ => {
@@ -376,18 +407,27 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
 
 fn filter_content(url: String) -> String {
     let response = reqwest::blocking::get(url).unwrap().text().unwrap();
-    let lines: Vec<&str> = response.lines().collect();
+    let mut lines: Vec<&str> = response.lines().collect();
     let index = lines
         .iter()
         .position(|line| line.contains("chapter-inner chapter-content"))
         .unwrap();
-    let lines: Vec<&str> = lines.iter().skip(index + 1).copied().collect();
+    lines = lines.iter().skip(index + 1).copied().collect();
     let end_index = lines
         .iter()
         .position(|line| line.contains("</div>"))
         .unwrap();
-    let lines: Vec<&str> = lines.iter().take(end_index).copied().collect();
-    let lines: Vec<&str> = lines.iter().map(|line| line.trim()).collect();
+    lines = lines.iter().take(end_index).copied().collect();
+    lines = lines.iter().map(|line| line.trim()).collect();
+
+    if lines.iter().any(|f| f.contains("<br />")) {
+        lines = lines[0].split("<br />").collect::<Vec<&str>>();
+        lines = lines
+            .iter()
+            .filter(|e| e.trim() != "")
+            .map(|e| e.trim())
+            .collect::<Vec<&str>>();
+    }
     let lines: Vec<String> = lines
         .iter()
         .map(|line| {
@@ -403,9 +443,14 @@ fn filter_content(url: String) -> String {
                     new_line.push(c);
                 }
             }
+            new_line = new_line.replace("&nbsp;", " ");
+            new_line= new_line.replace("&amp;", "&");
+            new_line = new_line.replace("&quot;", "\"");
+            new_line = new_line.replace("&apos;", "'");
+            new_line = new_line.replace("&lt;", "<");
+            new_line = new_line.replace("&gt;", ">");
             new_line
         })
         .collect();
-
     lines.join("\n")
 }
