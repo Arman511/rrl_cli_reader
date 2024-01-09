@@ -103,6 +103,10 @@ pub fn search_by_author() -> u64 {
     return show_books(author, pages, response);
 }
 
+pub fn search_by_tag() -> u64{
+    0
+}
+
 fn show_books(title: String, pages: u64, mut response: String) -> u64 {
     let mut fiction_list: Vec<Fiction>;
     let mut page: u32 = 1;
