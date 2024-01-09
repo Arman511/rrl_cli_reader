@@ -20,7 +20,6 @@ struct Fiction {
 pub fn search_by_title() -> u64 {
     let mut title: String;
     let mut response: String;
-    let mut pages: u64 = 1;
 
     loop {
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
@@ -39,21 +38,7 @@ pub fn search_by_title() -> u64 {
         }
         break;
     }
-    let lines = response.lines().collect::<Vec<&str>>();
-    let index = lines
-        .iter()
-        .position(|line| {
-            line.contains("<div class=text-center><ul class='pagination justify-content-center'>")
-        })
-        .unwrap_or(0);
-    if index != 0 {
-        let line = lines[index];
-        let line = line.split("data-page").collect::<Vec<&str>>();
-        let line = line.last().unwrap();
-        let line = line.split("'").collect::<Vec<&str>>();
-        let line = line.get(1).unwrap();
-        pages = line.parse::<u64>().unwrap();
-    }
+    let pages = get_num_of_pages(&response);
 
     return show_books(title, pages, response);
 }
@@ -61,7 +46,6 @@ pub fn search_by_title() -> u64 {
 pub fn search_by_author() -> u64 {
     let mut author: String;
     let mut response: String;
-    let mut pages: u64 = 1;
 
     loop {
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
@@ -84,11 +68,165 @@ pub fn search_by_author() -> u64 {
         }
         break;
     }
+    let pages: u64 = get_num_of_pages(&response);
+    return show_books(author, pages, response);
+}
+
+pub fn search_by_tag() -> u64 {
+    execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
+
+    let mut tags: Vec<(&str, &str, i32)> = vec![
+        ("Action", "action", 0),
+        ("Adventure", "adventure", 0),
+        ("Comedy", "comedy", 0),
+        ("Contemporary", "contemporary", 0),
+        ("Drama", "drama", 0),
+        ("Fantasy", "fantasy", 0),
+        ("Historical", "historical", 0),
+        ("Horror", "horror", 0),
+        ("Mystery", "mystery", 0),
+        ("Psychological", "psychological", 0),
+        ("Romance", "romance", 0),
+        ("Satire", "satire", 0),
+        ("Sci-Fi", "sci_fi", 0),
+        ("Short Story", "one_shot", 0),
+        ("Tragedy", "tragedy", 0),
+        ("Anti-Hero Lead", "anti-hero_lead", 0),
+        ("Artificial Intelligence", "artificial_intelligence", 0),
+        ("Attractive Lead", "attractive_lead", 0),
+        ("Cyberpunk", "cyberpunk", 0),
+        ("Dungeon", "dungeon", 0),
+        ("Dystopia", "dystopia", 0),
+        ("Female Lead", "female_lead", 0),
+        ("First Contact", "first_contact", 0),
+        ("GameLit", "gamelit", 0),
+        ("Gender Bender", "gender_bender", 0),
+        ("Genetically Engineered", "genetically_engineered%20", 0),
+        ("Grimdark", "grimdark", 0),
+        ("Hard Sci-fi", "hard_sci", 0),
+        ("Harem", "harem", 0),
+        ("High Fantasy", "high_fantasy", 0),
+        ("LitRPG", "litrpg", 0),
+        ("Low Fantasy", "low_fantasy", 0),
+        ("Magic", "magic", 0),
+        ("Male Lead", "male_lead", 0),
+        ("Martial Arts", "martial_arts", 0),
+        ("Multiple Lead Characters", "multiple_lead", 0),
+        ("Mythos", "mythos", 0),
+        ("Non-Human Lead", "non-human_lead", 0),
+        ("Portal Fantasy / Isekai", "summoned_hero", 0),
+        ("Post Apocalyptic", "post_apocalyptic", 0),
+        ("Progression", "progression", 0),
+        ("Reader Interactive", "reader_interactive", 0),
+        ("Reincarnation", "reincarnation", 0),
+        ("Ruling Class", "ruling_class", 0),
+        ("School Life", "school_life", 0),
+        ("Secret Identity", "secret_identity", 0),
+        ("Slice of Life", "slice_of_life", 0),
+        ("Soft Sci-fi", "soft_sci-fi", 0),
+        ("Space Opera", "space_opera", 0),
+        ("Sports", "sports", 0),
+        ("Steampunk", "steampunk", 0),
+        ("Strategy", "strategy", 0),
+        ("Strong Lead", "strong_lead", 0),
+        ("Super Heroes", "super_heroes", 0),
+        ("Supernatural", "supernatural", 0),
+        (
+            "Technologically Engineered",
+            "technologically_engineered",
+            0,
+        ),
+        ("Time Loop", "loop", 0),
+        ("Time Travel", "time_travel", 0),
+        ("Urban Fantasy", "urban_fantasy", 0),
+        ("Villainous Lead", "villainous_lead", 0),
+        ("Virtual Reality", "virtual_reality", 0),
+        ("War and Military", "war_and_military", 0),
+        ("Wuxia", "wuxia", 0),
+        ("Xianxia", "xianxia", 0),
+    ];
+    tags.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    let mut option;
+    
+    loop {
+        loop {
+            execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
+            println!("Tags:");
+            tags.iter().enumerate().for_each(|(i, tag)| {
+                let mut msg = format!("{}: {}", i + 1, tag.0);
+                if &tag.2 == &-1 {
+                    msg.push_str(" - excluded");
+                } else if &tag.2 == &1 {
+                    msg.push_str(" - included");
+                }
+                println!("{}", msg);
+            });
+
+            option = get_input("Enter the number of the tag you want to search for, use '-' exclude that tag e.g. -6 & use the id number again to remove it from the search - enter search to continue (exit to go back): ");
+            if option == "exit" {
+                return 0;
+            }
+            if option == "search" {
+                break;
+            }
+            match option.parse::<i32>() {
+                Ok(tag_id) => {
+                    let tag = tag_id.abs() as usize;
+                    if tag > tags.len() {
+                        println!("Invalid input - press enter to continue");
+                        std::io::stdin().read_line(&mut String::new()).unwrap();
+                        continue;
+                    }
+                    let current_tag_option = tags.get(tag - 1).unwrap().2;
+                    if current_tag_option != 0 {
+                        tags.get_mut(tag - 1).unwrap().2 = 0;
+                    } else {
+                        tags.get_mut(tag - 1).unwrap().2 = tag_id / tag as i32;
+                    }
+                }
+                Err(_) => {
+                    println!("Invalid input - press enter to continue");
+                    std::io::stdin().read_line(&mut String::new()).unwrap();
+                    continue;
+                }
+            }
+        }
+        let mut tag_string = String::new();
+        let mut search_msg:Vec<String> = vec![];
+        for tag in tags.clone() {
+            if tag.2 == 0 {
+                continue;
+            }
+            if tag.2 > 0 {
+                tag_string.push_str(format!("tagsAdd={}&", tag.1).as_str());
+                search_msg.push(format!("{} - Included", tag.0));
+            } else {
+                tag_string.push_str(format!("tagsRemove={}&", tag.1).as_str());
+                search_msg.push(format!("{} - Excluded", tag.0));
+            }
+        }
+        let url = format!("https://www.royalroad.com/fictions/search?{}", tag_string);
+        let response = reqwest::blocking::get(url).unwrap().text().unwrap();
+        if response.contains("No results matching these criteria were found") {
+            println!("No results found - press enter to continue");
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+            continue;
+        }
+        let pages: u64 = get_num_of_pages(&response);
+        let search_msg = search_msg.join(", ");
+
+        return show_books(search_msg, pages, response);
+    }
+}
+
+fn get_num_of_pages(response: &String) -> u64{
     let lines = response.lines().collect::<Vec<&str>>();
     let index = lines
         .iter()
         .position(|line| {
-            line.contains("<div class=text-center><ul class='pagination justify-content-center'>")
+            line.contains(
+                "<div class=text-center><ul class='pagination justify-content-center'>",
+            )
         })
         .unwrap_or(0);
     if index != 0 {
@@ -97,14 +235,9 @@ pub fn search_by_author() -> u64 {
         let line = line.last().unwrap();
         let line = line.split("'").collect::<Vec<&str>>();
         let line = line.get(1).unwrap();
-        pages = line.parse::<u64>().unwrap();
+        return line.parse::<u64>().unwrap();
     }
-
-    return show_books(author, pages, response);
-}
-
-pub fn search_by_tag() -> u64{
-    0
+    return 1;
 }
 
 fn show_books(title: String, pages: u64, mut response: String) -> u64 {

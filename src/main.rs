@@ -95,13 +95,13 @@ fn main_menu(config: &SessionConfig) -> Vec<Chapter> {
 
 fn find_book() -> u64 {
     loop {
+        execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
         println!("1: Search by title");
         println!("2: Search by author");
         println!("3: Search by tag");
-        println!("4: Search by genre");
-        println!("5: Search by rating");
-        println!("6: Search by word count");
-        println!("7: Go back");
+        println!("4: Search by rating");
+        println!("5: Search by word count");
+        println!("6: Go back");
         let mut option = String::new();
         println!("Enter option: ");
         std::io::stdin()
@@ -123,9 +123,6 @@ fn find_book() -> u64 {
                 return 0;
             }
             "6" => {
-                return 0;
-            }
-            "7" => {
                 return 0;
             }
             _ => {
