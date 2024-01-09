@@ -400,7 +400,7 @@ fn get_fiction_list(response: &str) -> Vec<Fiction> {
             let tag = tag.get(1).unwrap();
             let tag = tag.split("<").collect::<Vec<&str>>();
             let tag = tag.first().unwrap();
-            tags.push(tag.to_string());
+            tags.push(tag.trim().to_string());
         }
         let description_temp_start = 1 + lines
             .iter()
