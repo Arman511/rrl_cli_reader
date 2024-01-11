@@ -3,6 +3,7 @@ use crossterm::execute;
 use crossterm::terminal;
 use serde::{Deserialize, Serialize};
 use std::io::stdout;
+mod filter;
 mod search;
 
 #[derive(Serialize, Deserialize)]
@@ -96,12 +97,15 @@ fn main_menu(config: &SessionConfig) -> Vec<Chapter> {
 fn find_book() -> u64 {
     loop {
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
-        println!("1: Search by title");
-        println!("2: Search by author");
-        println!("3: Search by tag");
-        println!("4: Search by rating");
-        println!("5: Search by word count");
-        println!("6: Go back");
+        println!("1: Advanced Search");
+        println!("2: Search by title");
+        println!("3: Search by keywords");
+        println!("4: Search by author");
+        println!("5: Search by tag");
+        println!("6: Search by rating");
+        println!("7: Search by amount of pages");
+        println!("8: Search by status");
+        println!("9: Go back");
         let mut option = String::new();
         println!("Enter option: ");
         std::io::stdin()
@@ -109,20 +113,26 @@ fn find_book() -> u64 {
             .expect("Failed to read line");
         option = option.trim().to_string();
         match option.as_str() {
-            "1" => return search::search_by_title(),
-            "2" => {
-                return search::search_by_author();
-            }
-            "3" => {
-                return search::search_by_tag();
-            }
+            "1" => return search::search_advanced(0),
+            "2" => return search::search_advanced(1),
+            "3" => return search::search_advanced(2),
+
             "4" => {
-                return 0;
+                return search::search_advanced(3);
             }
             "5" => {
-                return 0;
+                return search::search_advanced(4);
             }
             "6" => {
+                return search::search_advanced(5);
+            }
+            "7" => {
+                return search::search_advanced(6);
+            }
+            "8" => {
+                return search::search_advanced(7);
+            }
+            "9" => {
                 return 0;
             }
             _ => {
@@ -134,6 +144,8 @@ fn find_book() -> u64 {
 }
 
 fn display_menu() {
+    execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
+    println!("{}", "Welcome to the Royal Road CLI Reader!".yellow().bold());
     println!("P: Continue previous book");
     println!("B: Load book");
     println!("C: Change colour of text");
@@ -322,7 +334,7 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
         chapter_number = chapter.order;
         url = format!("https://www.royalroad.com{}", chapter.url);
-        filtered_data = filter_content(url.clone());
+        filtered_data = filter::filter_content(url.clone());
         title = chapter.title.clone();
         println!(
             "Press enter to further the story(type exit to quit)\n\n{}\n\n",
@@ -400,54 +412,4 @@ fn show_book_page(config: SessionConfig, chapters: &Vec<Chapter>) {
             }
         }
     }
-}
-
-fn filter_content(url: String) -> String {
-    let response = reqwest::blocking::get(url).unwrap().text().unwrap();
-    let mut lines: Vec<&str> = response.lines().collect();
-    let index = lines
-        .iter()
-        .position(|line| line.contains("chapter-inner chapter-content"))
-        .unwrap();
-    lines = lines.iter().skip(index + 1).copied().collect();
-    let end_index = lines
-        .iter()
-        .position(|line| line.contains("</div>"))
-        .unwrap();
-    lines = lines.iter().take(end_index).copied().collect();
-    lines = lines.iter().map(|line| line.trim()).collect();
-
-    if lines.iter().any(|f| f.contains("<br />")) {
-        lines = lines[0].split("<br />").collect::<Vec<&str>>();
-        lines = lines
-            .iter()
-            .filter(|e| e.trim() != "")
-            .map(|e| e.trim())
-            .collect::<Vec<&str>>();
-    }
-    let lines: Vec<String> = lines
-        .iter()
-        .map(|line| {
-            let mut new_line = String::new();
-            let mut skip = false;
-            let line = line.replace("<br>", "\n");
-            for c in line.chars() {
-                if c == '<' {
-                    skip = true;
-                } else if c == '>' {
-                    skip = false;
-                } else if !skip {
-                    new_line.push(c);
-                }
-            }
-            new_line = new_line.replace("&nbsp;", " ");
-            new_line= new_line.replace("&amp;", "&");
-            new_line = new_line.replace("&quot;", "\"");
-            new_line = new_line.replace("&apos;", "'");
-            new_line = new_line.replace("&lt;", "<");
-            new_line = new_line.replace("&gt;", ">");
-            new_line
-        })
-        .collect();
-    lines.join("\n")
 }
