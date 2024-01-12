@@ -1,10 +1,10 @@
+use crate::filter;
 use crate::get_chapters;
 use crate::SessionConfig;
 use colored::*;
 use crossterm::execute;
 use crossterm::terminal;
 use std::io::stdout;
-use crate::filter; 
 
 struct Fiction {
     id: u64,
@@ -27,10 +27,10 @@ struct Fiction {
  * 7: Status
  */
 
-pub fn search_advanced(option: u64) -> u64 {
+pub fn search(option: u64) -> u64 {
     let mut url_segment: String = String::new();
     let sorting = get_sorting();
-    if sorting == ""{
+    if sorting == "" {
         return 0;
     }
     let mut search_title: String = String::new();
@@ -41,62 +41,21 @@ pub fn search_advanced(option: u64) -> u64 {
 
                 execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
                 println!("Advanced Search:");
-                println!(
-                    "1: Title {}",
-                    if attributes[0].1 != "" && attributes[0].1 != "0" {
-                        format!(" - {}", attributes[0].0)
-                    } else {
-                        String::new()
-                    }
-                );
-                println!(
-                    "2: Keywords {}",
-                    if attributes[1].1 != "" && attributes[1].1 != "0" {
-                        format!(" - {}", attributes[1].0)
-                    } else {
-                        String::new()
-                    }
-                );
-                println!(
-                    "3: Author {}",
-                    if attributes[2].1 != "" && attributes[2].1 != "0" {
-                        format!(" - {}", attributes[2].0)
-                    } else {
-                        String::new()
-                    }
-                );
-                println!(
-                    "4: Tag {}",
-                    if attributes[3].1 != "" && attributes[3].1 != "0" {
-                        format!(" - {}", attributes[3].0)
-                    } else {
-                        String::new()
-                    }
-                );
-                println!(
-                    "5: Rating {}",
-                    if attributes[4].1 != "" && attributes[4].1 != "0" {
-                        format!(" - {}", attributes[4].0)
-                    } else {
-                        String::new()
-                    }
-                );
-                println!(
-                    "6: Pages {}",
-                    if attributes[5].1 != "" && attributes[5].1 != "0" {
-                        format!(" - {}", attributes[5].0)
-                    } else {
-                        String::new()
-                    }
-                );
-                println!(
-                    "7: Status {}",
-                    if attributes[6].1 != "" && attributes[6].1 != "0" {
-                        format!(" - {}", attributes[6].0)
-                    } else {
-                        String::new()
-                    }
-                );
+                let search_types = vec![
+                    "Title", "Keywords", "Author", "Tag", "Rating", "Pages", "Status",
+                ];
+                search_types.iter().enumerate().for_each(|(i, name)| {
+                    println!(
+                        "{}: {} {}",
+                        i,
+                        name,
+                        if attributes[0].1 != "" && attributes[0].1 != "0" {
+                            format!(" - {}", attributes[0].0)
+                        } else {
+                            String::new()
+                        }
+                    )
+                });
                 let option =
                     get_input("Enter the number of the option you want to use(exit to go back)");
                 if option == "exit" {
@@ -649,10 +608,11 @@ pub fn get_sorting() -> String {
         sort_types.iter().enumerate().for_each(|(i, sort_type)| {
             println!("{}: {}", i + 1, sort_type.0);
         });
-        let mut option = get_input("Enter the number of the sorting you want to use(exit to go back)");
+        let mut option =
+            get_input("Enter the number of the sorting you want to use(exit to go back)");
         if option == "exit" {
             return "".to_string();
-        }else if option == "" {
+        } else if option == "" {
             option = "1".to_string();
         }
         let option = option.parse::<usize>();

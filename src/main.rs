@@ -113,24 +113,24 @@ fn find_book() -> u64 {
             .expect("Failed to read line");
         option = option.trim().to_string();
         match option.as_str() {
-            "1" => return search::search_advanced(0),
-            "2" => return search::search_advanced(1),
-            "3" => return search::search_advanced(2),
+            "1" => return search::search(0),
+            "2" => return search::search(1),
+            "3" => return search::search(2),
 
             "4" => {
-                return search::search_advanced(3);
+                return search::search(3);
             }
             "5" => {
-                return search::search_advanced(4);
+                return search::search(4);
             }
             "6" => {
-                return search::search_advanced(5);
+                return search::search(5);
             }
             "7" => {
-                return search::search_advanced(6);
+                return search::search(6);
             }
             "8" => {
-                return search::search_advanced(7);
+                return search::search(7);
             }
             "9" => {
                 return 0;
