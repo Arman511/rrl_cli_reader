@@ -36,70 +36,7 @@ pub fn search(option: u64) -> u64 {
     let mut search_title: String = String::new();
     loop {
         match option {
-            0 => loop {
-                let mut attributes = vec![(String::new(), String::new()); 7];
-
-                execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
-                println!("Advanced Search:");
-                let search_types = vec![
-                    "Title", "Keywords", "Author", "Tag", "Rating", "Pages", "Status",
-                ];
-                search_types.iter().enumerate().for_each(|(i, name)| {
-                    println!(
-                        "{}: {} {}",
-                        i,
-                        name,
-                        if attributes[0].1 != "" && attributes[0].1 != "0" {
-                            format!(" - {}", attributes[0].0)
-                        } else {
-                            String::new()
-                        }
-                    )
-                });
-                let option =
-                    get_input("Enter the number of the option you want to use(exit to go back)");
-                if option == "exit" {
-                    return 0;
-                }
-                let option = option.parse::<usize>();
-                if option.is_err() {
-                    println!("Invalid input - press enter to continue");
-                    std::io::stdin().read_line(&mut String::new()).unwrap();
-                    continue;
-                }
-                let option = option.unwrap();
-                match option {
-                    1 => attributes[option - 1] = search_by_title(),
-                    2 => attributes[option - 1] = search_by_keywords(),
-                    3 => attributes[option - 1] = search_by_author(),
-                    4 => attributes[option - 1] = search_by_tag(),
-                    5 => attributes[option - 1] = search_by_rating(),
-                    6 => attributes[option - 1] = search_by_pages_amount(),
-                    7 => attributes[option - 1] = search_by_status(),
-                    _ => {
-                        println!("Invalid input - press enter to continue");
-                        std::io::stdin().read_line(&mut String::new()).unwrap();
-                        continue;
-                    }
-                };
-                url_segment = String::new();
-                attributes.clone().iter().for_each(|attribute| {
-                    if attribute.1 != "0" && attribute.1 != "" {
-                        url_segment.push_str("&");
-                        url_segment.push_str(attribute.1.as_str());
-                        search_title.push_str(format!(", {}", attribute.0).as_str());
-                    }
-                });
-
-                let pages: u64 = get_num_of_pages(url_segment.clone());
-                if pages == 0 {
-                    println!(
-                        "No results matching these criteria were found - press enter to continue"
-                    );
-                    std::io::stdin().read_line(&mut String::new()).unwrap();
-                    continue;
-                }
-            },
+            0 => (search_title, url_segment) = advanced_search(),
             1 => (search_title, url_segment) = search_by_title(),
             2 => (search_title, url_segment) = search_by_keywords(),
             3 => (search_title, url_segment) = search_by_author(),
@@ -122,6 +59,73 @@ pub fn search(option: u64) -> u64 {
             continue;
         }
         return show_and_select_book(search_title, pages, url_segment);
+    }
+}
+
+fn advanced_search() -> (String, String) {
+    let mut attributes = vec![(String::new(), String::new()); 7];
+    let mut url_segment = String::new();
+    let mut search_title = String::new();
+    loop {
+        execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
+        println!("Advanced Search:");
+        let search_types = vec![
+            "Title", "Keywords", "Author", "Tag", "Rating", "Pages", "Status", "Search",
+        ];
+        search_types.iter().enumerate().for_each(|(i, name)| {
+            println!(
+                "{}: {} {}",
+                i + 1,
+                name,
+                if attributes[0].1 != "" && attributes[0].1 != "0" {
+                    format!(" - {}", attributes[0].0)
+                } else {
+                    String::new()
+                }
+            )
+        });
+        let option = get_input("Enter the number of the option you want to use(exit to go back)");
+        if option == "exit" {
+            return ("0".to_string(), "0".to_string());
+        }
+        let option = option.parse::<usize>();
+        if option.is_err() {
+            println!("Invalid input - press enter to continue");
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+            continue;
+        }
+        let option = option.unwrap();
+        match option {
+            1 => attributes[option - 1] = search_by_title(),
+            2 => attributes[option - 1] = search_by_keywords(),
+            3 => attributes[option - 1] = search_by_author(),
+            4 => attributes[option - 1] = search_by_tag(),
+            5 => attributes[option - 1] = search_by_rating(),
+            6 => attributes[option - 1] = search_by_pages_amount(),
+            7 => attributes[option - 1] = search_by_status(),
+            8 => return (search_title, url_segment),
+            _ => {
+                println!("Invalid input - press enter to continue");
+                std::io::stdin().read_line(&mut String::new()).unwrap();
+                continue;
+            }
+        };
+        let mut search_title_temp: Vec<String> = Vec::new();
+        let mut url_segment_temp: Vec<String> = Vec::new();
+        attributes.clone().iter().for_each(|attribute| {
+            if attribute.1 != "0" && attribute.1 != "" {
+                search_title_temp.push(attribute.0.clone());
+                url_segment_temp.push(attribute.1.clone());
+            }
+        });
+        search_title = search_title_temp.join(", ");
+        url_segment = url_segment_temp.join("&");
+        let pages: u64 = get_num_of_pages(url_segment.clone());
+        if pages == 0 {
+            println!("No results matching these criteria were found - press enter to continue");
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+            continue;
+        }
     }
 }
 

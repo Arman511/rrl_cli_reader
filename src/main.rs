@@ -116,25 +116,12 @@ fn find_book() -> u64 {
             "1" => return search::search(0),
             "2" => return search::search(1),
             "3" => return search::search(2),
-
-            "4" => {
-                return search::search(3);
-            }
-            "5" => {
-                return search::search(4);
-            }
-            "6" => {
-                return search::search(5);
-            }
-            "7" => {
-                return search::search(6);
-            }
-            "8" => {
-                return search::search(7);
-            }
-            "9" => {
-                return 0;
-            }
+            "4" => return search::search(3),
+            "5" => return search::search(4),
+            "6" => return search::search(5),
+            "7" => return search::search(6),
+            "8" => return search::search(7),
+            "9" => return 0,
             _ => {
                 println!("Invalid option");
                 continue;
@@ -145,7 +132,10 @@ fn find_book() -> u64 {
 
 fn display_menu() {
     execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
-    println!("{}", "Welcome to the Royal Road CLI Reader!".yellow().bold());
+    println!(
+        "{}",
+        "Welcome to the Royal Road CLI Reader!".yellow().bold()
+    );
     println!("P: Continue previous book");
     println!("B: Load book");
     println!("C: Change colour of text");
