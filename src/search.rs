@@ -63,7 +63,7 @@ pub fn search(option: u64) -> u64 {
 }
 
 fn advanced_search() -> (String, String) {
-    let mut attributes = vec![(String::new(), String::new()); 7];
+    let mut attributes = vec![(String::new(), String::new()); 8];
     let mut url_segment = String::new();
     let mut search_title = String::new();
     loop {
@@ -72,13 +72,13 @@ fn advanced_search() -> (String, String) {
         let search_types = vec![
             "Title", "Keywords", "Author", "Tag", "Rating", "Pages", "Status", "Search",
         ];
-        search_types.iter().enumerate().for_each(|(i, name)| {
+        attributes.iter().enumerate().for_each(|(i, item)| {
             println!(
                 "{}: {} {}",
                 i + 1,
-                name,
-                if attributes[0].1 != "" && attributes[0].1 != "0" {
-                    format!(" - {}", attributes[0].0)
+                search_types[i],
+                if item.1 != "" && item.1 != "0" {
+                    format!("- {}", attributes[i].0)
                 } else {
                     String::new()
                 }
@@ -136,10 +136,13 @@ fn search_by_rating() -> (String, String) {
     loop {
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
         let input = get_input(
-            "Enter the lower bound of the rating you want to search for(exit to go back)",
+            "Enter the lower bound of the rating you want to search for(lowest is 0, highest is 5, default is 0, exit to go back)",
         );
         if input == "exit" {
             return ("0".to_string(), "0".to_string());
+        } else if input == "" {
+            lower_bound = 0.0;
+            break;
         }
         let lower_bound_temp = input.parse::<f32>();
         if lower_bound_temp.is_err() {
@@ -153,15 +156,19 @@ fn search_by_rating() -> (String, String) {
             std::io::stdin().read_line(&mut String::new()).unwrap();
             continue;
         }
+        lower_bound = (lower_bound * 100.0).round() / 100.0;
         break;
     }
     loop {
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
         let input = get_input(
-            "Enter the upper bound of the rating you want to search for(exit to go back)",
+            "Enter the upper bound of the rating you want to search for(lowest is 0, highest is 5, default is 5, exit to go back)",
         );
         if input == "exit" {
             return ("0".to_string(), "0".to_string());
+        } else if input == "5" {
+            upper_bound = 5.0;
+            break;
         }
         let upper_bound_temp = input.parse::<f32>();
         if upper_bound_temp.is_err() {
@@ -179,10 +186,14 @@ fn search_by_rating() -> (String, String) {
             std::io::stdin().read_line(&mut String::new()).unwrap();
             continue;
         }
+        upper_bound = (upper_bound * 100.0).round() / 100.0;
         break;
     }
     let url_segment = format!("minRating={}&maxRating={}", lower_bound, upper_bound);
-    return (format!("{} - {}", lower_bound, upper_bound), url_segment);
+    return (
+        format!("{} stars to {} stars", lower_bound, upper_bound),
+        url_segment,
+    );
 }
 
 fn search_by_tag() -> (String, String) {
@@ -268,20 +279,19 @@ fn search_by_tag() -> (String, String) {
         execute!(stdout(), terminal::Clear(terminal::ClearType::All)).unwrap();
         println!("Tags:");
         tags.iter().enumerate().for_each(|(i, tag)| {
-            let mut msg = format!("{}: {}", i + 1, tag.0);
+            print!("{}: {}", i + 1, tag.0);
             if &tag.2 == &-1 {
-                msg.push_str(" - excluded");
+                print!("{}", " - excluded".red().bold());
             } else if &tag.2 == &1 {
-                msg.push_str(" - included");
-            }
-            println!("{}", msg);
+                print!("{}", " - included".blue().bold())
+            };
+            println!();
         });
 
-        let option = get_input("Enter the number of the tag you want to search for, use '-' exclude that tag e.g. -6 & use the id number again to remove it from the search - enter search to continue (exit to go back): ");
+        let option = get_input("Enter the number of the tag you want to search for, use '-' to exclude that tag e.g. -6 & use the id number again to remove it from the search - enter search to continue (exit to go back): ");
         if option == "exit" {
             return ("0".to_string(), "0".to_string());
-        }
-        if option == "search" {
+        } else if option == "search" {
             break;
         }
         match option.parse::<i32>() {
@@ -298,7 +308,7 @@ fn search_by_tag() -> (String, String) {
                     continue;
                 }
                 let current_tag_option = tags.get(tag - 1).unwrap().2;
-                if current_tag_option != 0 {
+                if current_tag_option != 0 && current_tag_option == tag_id / tag as i32 {
                     tags.get_mut(tag - 1).unwrap().2 = 0;
                 } else {
                     tags.get_mut(tag - 1).unwrap().2 = tag_id / tag as i32;
@@ -311,21 +321,21 @@ fn search_by_tag() -> (String, String) {
             }
         }
     }
-    let mut tag_string = String::new();
     let mut search_msg: Vec<String> = vec![];
+    let mut search_title: Vec<String> = vec![];
     for tag in tags.clone() {
         if tag.2 == 0 {
             continue;
         }
         if tag.2 > 0 {
-            tag_string.push_str(format!("tagsAdd={}&", tag.1).as_str());
-            search_msg.push(format!("{} - Included", tag.0));
+            search_msg.push(format!("tagsAdd={}", tag.1));
+            search_title.push(format!("{} - Included", tag.0));
         } else {
-            tag_string.push_str(format!("tagsRemove={}&", tag.1).as_str());
-            search_msg.push(format!("{} - Excluded", tag.0));
+            search_msg.push(format!("tagsRemove={}", tag.1));
+            search_title.push(format!("{} - Excluded", tag.0));
         }
     }
-    return (search_msg.join(", "), tag_string);
+    return (search_title.join(", "), search_msg.join("&"));
 }
 
 fn search_by_keywords() -> (String, String) {
@@ -336,7 +346,7 @@ fn search_by_keywords() -> (String, String) {
     if keywords == "exit" {
         return ("0".to_string(), "0".to_string());
     }
-    let url_segment = format!("keywords={}", keywords);
+    let url_segment = format!("keyword={}", keywords);
     return (keywords, url_segment);
 }
 
@@ -386,7 +396,11 @@ fn show_and_select_book(search_title: String, pages: u64, url_segment: String) -
                 fiction.title.bold().blue()
             );
             println!("{} {}\n", "Tags:".red().bold(), fiction.tags.join(", "));
-            println!("{} {}\n", "Description".red().bold(), fiction.description);
+            println!(
+                "{} {}\n",
+                "Description:\n".red().bold(),
+                fiction.description
+            );
             println!("{} {}\n", "Pages:".red().bold(), fiction.pages);
             println!("{} {}\n", "Chapters:".red().bold(), fiction.chapters);
             println!("{} {}\n", "Rating:".red().bold(), fiction.rating);
@@ -420,6 +434,7 @@ fn show_and_select_book(search_title: String, pages: u64, url_segment: String) -
             match book_pick.as_str() {
                 "exit" => return 0,
                 ">" => {
+                    book_pick = String::new();
                     if page == pages as u32 {
                         println!("Reached the last page - press enter to continue");
                         std::io::stdin().read_line(&mut String::new()).unwrap();
@@ -429,6 +444,7 @@ fn show_and_select_book(search_title: String, pages: u64, url_segment: String) -
                     break;
                 }
                 "<" => {
+                    book_pick = String::new();
                     if page == 1 {
                         println!("Reached the first page - press enter to continue");
                         std::io::stdin().read_line(&mut String::new()).unwrap();
@@ -613,7 +629,7 @@ pub fn get_sorting() -> String {
             println!("{}: {}", i + 1, sort_type.0);
         });
         let mut option =
-            get_input("Enter the number of the sorting you want to use(exit to go back)");
+            get_input("Enter the number of the sorting you want to use(exit to go back, default is relevance)");
         if option == "exit" {
             return "".to_string();
         } else if option == "" {
