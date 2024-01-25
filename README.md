@@ -16,7 +16,7 @@ rrl_cli_reader is a command-line interface (CLI) program for reading fiction fro
 
 ### Build the Project
 
-Make sure you have Rust installed. Clone the repository and use `cargo build --release` to build the executable.
+Make sure you have Rust installed. Clone the repository and use `cargo build --release` to build the executable. To build in GNU/Linux make sure libssl-dev and pkg-config are installed.
 
 ### Run the Program
 
@@ -24,7 +24,7 @@ Execute the built binary to launch the rrl_cli_reader.
 
 ### Navigate the Menu
 
-Use the provided options (`P`, `B`, `C`, `L`, `Q`) to continue a previous book, load a new book, change text color, to seach for a book, or quit the program.
+Use the provided options (`P`, `B`, `C`, `L`, `Q`) to continue a previous book, load a new book, change text color, to search for a book, or quit the program.
 
 ### Read Chapters
 
