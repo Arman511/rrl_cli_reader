@@ -28,9 +28,10 @@ Use the provided options (`P`, `B`, `C`, `L`, `Q`) to continue a previous book, 
 
 ### Read Chapters
 
-Once a book is loaded, navigate through chapters using the options displayed. Press enter to progress through the story,  and type exit to bo back to the menu.
+Once a book is loaded, navigate through chapters using the options displayed. Press enter to progress through the story, and type exit to bo back to the menu.
 
 ### Searching
+
 First select what type of searching is going to be done. Then pick your ordering. Finally, type in your search query. The program will then display the results. If you want to read a book from the results, type in the number of the book you want to read. If you want to go back to the menu, type in exit.
 
 ## Usage when reading
@@ -47,6 +48,10 @@ First select what type of searching is going to be done. Then pick your ordering
 - serde: Serialization and deserialization framework.
 - reqwest: HTTP client for making web requests.
 - confy: Simple configuration management.
+
+## TODO
+
+- Add support for tables.
 
 ## Acknowledgments
 
