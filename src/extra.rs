@@ -96,7 +96,7 @@ pub fn get_sort_types() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
-pub fn get_sorting() -> String {
+pub fn get_sorting() -> Option<String> {
     let order_types = vec![("Ascending", "asc"), ("Descending", "desc")];
     let sort_types = get_sort_types();
     let mut url_addition: String;
@@ -108,7 +108,7 @@ pub fn get_sorting() -> String {
         });
         let option = get_input("Enter the number of the sorting you want to use(exit to go back, default is descending)");
         if option == "exit" {
-            return "".to_string();
+            return None;
         }
         match option.as_str() {
             "1" => url_addition = format!("dir=asc"),
@@ -131,7 +131,7 @@ pub fn get_sorting() -> String {
         let mut option =
             get_input("Enter the number of the sorting you want to use(exit to go back, default is relevance)");
         if option == "exit" {
-            return "".to_string();
+            return None;
         } else if option == "" {
             option = "1".to_string();
         }
@@ -151,5 +151,5 @@ pub fn get_sorting() -> String {
             .push_str(format!("&orderBy={}", sort_types.get(option - 1).unwrap().1).as_str());
         break;
     }
-    url_addition
+    Some(url_addition)
 }

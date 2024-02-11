@@ -44,10 +44,10 @@ First select what type of searching is going to be done. Then pick your ordering
 ## Dependencies
 
 - colored: Terminal coloring for enhanced readability.
-- crossterm: Cross-platform terminal manipulation library.
 - serde: Serialization and deserialization framework.
 - reqwest: HTTP client for making web requests.
 - confy: Simple configuration management.
+- soup: A beautiful way to manipulate html
 
 ## TODO
 

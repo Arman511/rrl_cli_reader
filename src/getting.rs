@@ -12,8 +12,16 @@ struct Fiction {
     views: u64,
 }
 pub fn search() -> Option<Vec<Chapter>> {
+    let mut result;
+    let sorting = extra::get_sorting();
+    if sorting.is_none() {
+        return None;
+    }
+    let mut pages: u64;
     loop {
         clear();
+        result = None;
+        pages = 0;
         println!("1: Advanced Search");
         println!("2: Search by title");
         println!("3: Search by keywords");
@@ -29,25 +37,34 @@ pub fn search() -> Option<Vec<Chapter>> {
             .read_line(&mut option)
             .expect("Failed to read line");
         option = option.trim().to_string();
-        let title;
-        let url_segment;
         match option.as_str() {
-            //"1" => (title, url_segment) = advanced_search(),
-            "2" => (title, url_segment) = search::search_by_title(),
-            //"3" => (title, url_segment) = search_by_keywords(),
-            // "4" => (title, url_segment) = search_by_author(),
-            "5" => (title, url_segment) = search::search_by_tag(),
-            // "6" => (title, url_segment) = search_by_rating(),
-            // "7" => (title, url_segment) = search_by_pages(),
-            // "8" => (title, url_segment) = search_by_status(),
+            "1" => result = search::advanced_search(),
+            "2" => result = search::search_by_title(),
+            "3" => result = search::search_by_keywords(),
+            "4" => result = search::search_by_author(),
+            "5" => result = search::search_by_tag(),
+            "6" => result = search::search_by_rating(),
+            "7" => result = search::search_by_pages_amount(),
+            "8" => result = search::search_by_status(),
             "9" => return None,
             _ => {
                 enter_to_continue("Invalid choice".to_string());
                 continue;
             }
         }
+        if result.is_none() {
+            return None;
+        }
+
+        pages = get_num_of_pages(&result.clone().unwrap().1);
+        if pages == 0 {
+            enter_to_continue("No results found".to_string());
+            continue;
+        }
+        break;
     }
-    let sorting = extra::get_sorting();
+    let sorting = sorting.unwrap();
+    search::pick_book(result.unwrap(), pages, sorting);
 
     None
 }
@@ -157,4 +174,35 @@ pub fn which_chapter(chapters: &Vec<Chapter>, title: String) -> Option<u64> {
             }
         }
     }
+}
+
+pub fn get_num_of_pages(url_segment: &str) -> u64 {
+    let response = reqwest::blocking::get(format!(
+        "https://www.royalroad.com/fictions/search?{}",
+        url_segment
+    ))
+    .unwrap();
+    let soup = Soup::new(&response.text().unwrap());
+    if soup
+        .tag("div")
+        .attr("class", "search-container")
+        .find()
+        .unwrap()
+        .text()
+        .contains("No results matching ")
+    {
+        return 0;
+    }
+    if soup.tag("a").attr_name("data-page").find().is_none() {
+        return 1;
+    }
+    soup.tag("a")
+        .attr_name("data-page")
+        .find_all()
+        .last()
+        .unwrap()
+        .get("data-page")
+        .unwrap()
+        .parse::<u64>()
+        .unwrap()
 }
