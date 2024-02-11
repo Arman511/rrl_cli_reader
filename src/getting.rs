@@ -48,6 +48,7 @@ pub fn search() -> Option<Vec<Chapter>> {
         }
     }
     let sorting = extra::get_sorting();
+
     None
 }
 
