@@ -109,7 +109,7 @@ fn read_chapters(chapters: Vec<Chapter>, mut config: SessionConfig) {
             .attr("class", "chapter-content")
             .find()
             .unwrap()
-            .tag("span")
+            .tag("p")
             .find_all();
         let mut input;
         for content in chapter_content {
