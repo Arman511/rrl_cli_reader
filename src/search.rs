@@ -1,8 +1,4 @@
-use crate::{
-    clear, enter_to_continue, extra,
-    getting::{self, which_chapter},
-    SessionConfig,
-};
+use crate::{clear, enter_to_continue, extra, getting};
 use colored::Colorize;
 use soup::{NodeExt, QueryBuilderExt};
 
@@ -397,7 +393,7 @@ pub fn pick_book(result: (String, String), pages: u64, sorting: String) -> bool 
                     Ok(num) => {
                         if num > 0 && num <= books.len() {
                             load_book(books.get(num - 1).unwrap());
-                            return false;
+                            return true;
                         }
                     }
                     Err(_) => {
@@ -446,10 +442,7 @@ pub fn pick_book(result: (String, String), pages: u64, sorting: String) -> bool 
 }
 
 fn load_book(book: &Fiction) {
-    let current_config: SessionConfig =
-        confy::load("rrl_cli_reader", "SessionConfig").unwrap_or_default();
-
-    let chapters = getting::get_chapters(book.id.clone(), true).unwrap();
+    getting::get_chapters(book.id.clone(), true).unwrap();
 }
 
 fn get_search_results(url: &str) -> Vec<Fiction> {
@@ -457,7 +450,7 @@ fn get_search_results(url: &str) -> Vec<Fiction> {
     let soup = soup::Soup::new(&response.text().unwrap());
     let books_unfiltered = soup
         .tag("div")
-        .attr("class", "row fiction-list-item")
+        .attr("class", "fiction-list-item")
         .find_all();
     let mut books: Vec<Fiction> = vec![];
     for book in books_unfiltered {
@@ -466,14 +459,17 @@ fn get_search_results(url: &str) -> Vec<Fiction> {
             .attr("class", "fiction-title")
             .find()
             .unwrap()
-            .text();
+            .text()
+            .trim()
+            .to_string();
         let id = book
             .tag("a")
-            .attr("class", "font-red-sunglo bold")
+            .attr("class", "font-red-sunglo")
             .find()
             .unwrap()
             .get("href")
-            .unwrap()
+            .unwrap();
+        let id = id
             .split("/")
             .collect::<Vec<&str>>()
             .get(2)
@@ -484,7 +480,9 @@ fn get_search_results(url: &str) -> Vec<Fiction> {
             .attr("id", format!("description-{}", id))
             .find()
             .unwrap()
-            .text();
+            .text()
+            .trim()
+            .to_string();
         let tags = book
             .tag("span")
             .attr("class", "tags")
@@ -493,42 +491,41 @@ fn get_search_results(url: &str) -> Vec<Fiction> {
             .tag("a")
             .find_all()
             .into_iter()
-            .map(|tag| tag.text())
+            .map(|tag| tag.text().trim().to_string())
             .collect::<Vec<String>>();
-        let mut row_stats = book
+        let row_stats = book
             .tag("div")
-            .attr("class", "row stats")
+            .attr("class", "stats")
             .find()
             .unwrap()
             .tag("div")
             .find_all()
-            .map(|tag| tag.text())
+            .map(|tag| tag.text().trim().to_string())
             .collect::<Vec<String>>();
-        row_stats.pop();
         let pages = row_stats
-            .iter()
-            .find(|txt: &&String| txt.contains("Pages"))
+            .get(3)
             .unwrap()
             .replace(" Pages", "")
+            .replace(",", "")
             .parse::<u64>()
             .unwrap();
         let views = row_stats
-            .iter()
-            .find(|txt: &&String| txt.contains("Views"))
+            .get(4)
             .unwrap()
             .replace(" Views", "")
+            .replace(",", "")
             .parse::<u64>()
             .unwrap();
         let chapters = row_stats
-            .iter()
-            .find(|txt: &&String| txt.contains("Chapters"))
+            .get(5)
             .unwrap()
             .replace(" Chapters", "")
+            .replace(",", "")
             .parse::<u64>()
             .unwrap();
         let ratings = book
             .tag("span")
-            .attr("class", "font-red-sunglo star")
+            .attr("class", "star")
             .find()
             .unwrap()
             .get("title")

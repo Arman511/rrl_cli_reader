@@ -1,5 +1,6 @@
 use colored::{Color, Colorize};
 use serde::{Deserialize, Serialize};
+use soup::{NodeExt, QueryBuilderExt, Soup};
 
 mod extra;
 mod getting;
@@ -67,10 +68,97 @@ fn main() {
             continue;
         }
         config = confy::load("rrl_cli_reader", "SessionConfig").unwrap_or_default();
-        for chapter in chapters {
-            println!("{}", chapter.title);
+        read_chapters(chapters, config.clone());
+    }
+}
+
+fn read_chapters(chapters: Vec<Chapter>, mut config: SessionConfig) {
+    loop {
+        clear();
+        let url = format!(
+            "https://www.royalroad.com{}",
+            chapters[config.chapter_num as usize].url
+        );
+        let response = reqwest::blocking::get(url);
+        if response.is_err() {
+            enter_to_continue("Failed to fetch chapter".to_string());
+            continue;
         }
-        std::process::exit(0);
+        println!(
+            "{}",
+            "Press enter to work through the page and type exit and enter to go back to main menu\n"
+                .red()
+                .bold()
+        );
+        println!(
+            "{}\n{}, Chapter {} of {}\n",
+            config
+                .book_name
+                .color(Color::from(config.color.clone()))
+                .bold(),
+            chapters[config.chapter_num as usize]
+                .title
+                .color(Color::from(config.color.clone()))
+                .bold(),
+            config.chapter_num + 1,
+            chapters.len()
+        );
+        let soup = soup::Soup::new(&response.unwrap().text().unwrap());
+        let chapter_content = soup
+            .tag("div")
+            .attr("class", "chapter-content")
+            .find()
+            .unwrap()
+            .tag("span")
+            .find_all();
+        let mut input;
+        for content in chapter_content {
+            input = String::new();
+            println!(
+                "{}",
+                content.text().color(Color::from(config.color.clone()))
+            );
+            std::io::stdin().read_line(&mut input).unwrap();
+            if input.trim() == "exit" {
+                return;
+            }
+        }
+
+        loop {
+            input = String::new();
+            println!(
+                "{}",
+                "Finished chapter, press > to go to next chapter, < to go to previous chapter, or exit to go back to main menu"
+                    .green()
+                    .bold()
+            );
+            std::io::stdin().read_line(&mut input).unwrap();
+            match input.trim() {
+                ">" => {
+                    if config.chapter_num + 1 < chapters.len() as u64 {
+                        config.chapter_num += 1;
+                        break;
+                    } else {
+                        enter_to_continue("No more chapters".to_string());
+                    }
+                }
+                "<" => {
+                    if config.chapter_num > 0 {
+                        config.chapter_num -= 1;
+                        break;
+                    } else {
+                        enter_to_continue("No previous chapters".to_string());
+                    }
+                }
+                "exit" => {
+                    return;
+                }
+                _ => {
+                    enter_to_continue("Invalid input".to_string());
+                }
+            }
+        }
+        confy::store("rrl_cli_reader", "SessionConfig", config.clone()).unwrap();
     }
 }
 
