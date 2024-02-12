@@ -1,6 +1,6 @@
 use colored::{Color, Colorize};
 use serde::{Deserialize, Serialize};
-use soup::{NodeExt, QueryBuilderExt, Soup};
+use soup::{NodeExt, QueryBuilderExt};
 
 mod extra;
 mod getting;
