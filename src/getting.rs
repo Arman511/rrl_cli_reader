@@ -1,16 +1,7 @@
 use crate::{clear, enter_to_continue, extra, search, Chapter, SessionConfig};
 use colored::Colorize;
 use soup::{NodeExt, QueryBuilderExt, Soup};
-struct Fiction {
-    id: u64,
-    title: String,
-    tags: Vec<String>,
-    description: String,
-    pages: u64,
-    chapters: u64,
-    rating: f32,
-    views: u64,
-}
+
 pub fn search() -> Option<Vec<Chapter>> {
     let mut result;
     let sorting = extra::get_sorting();
@@ -20,8 +11,6 @@ pub fn search() -> Option<Vec<Chapter>> {
     let mut pages: u64;
     loop {
         clear();
-        result = None;
-        pages = 0;
         println!("1: Advanced Search");
         println!("2: Search by title");
         println!("3: Search by keywords");
@@ -64,9 +53,17 @@ pub fn search() -> Option<Vec<Chapter>> {
         break;
     }
     let sorting = sorting.unwrap();
-    search::pick_book(result.unwrap(), pages, sorting);
-
-    None
+    let book_decided = search::pick_book(result.unwrap(), pages, sorting);
+    if !book_decided {
+        return None;
+    }
+    let config: SessionConfig = confy::load("rrl_cli_reader", "SessionConfig").unwrap_or_default();
+    let chapters = get_chapters(config.book_id, false);
+    if chapters.is_err() {
+        enter_to_continue("No chapters found".to_string());
+        return None;
+    }
+    Some(chapters.unwrap())
 }
 
 pub fn get_input(msg: &str) -> String {

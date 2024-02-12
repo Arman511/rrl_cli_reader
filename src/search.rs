@@ -1,5 +1,21 @@
-use crate::{clear, enter_to_continue, extra, getting};
+use crate::{
+    clear, enter_to_continue, extra,
+    getting::{self, which_chapter},
+    SessionConfig,
+};
 use colored::Colorize;
+use soup::{NodeExt, QueryBuilderExt};
+
+struct Fiction {
+    id: String,
+    title: String,
+    tags: Vec<String>,
+    description: String,
+    pages: u64,
+    chapters: u64,
+    rating: f32,
+    views: u64,
+}
 
 pub fn search_by_tag() -> Option<(String, String)> {
     let mut tags: Vec<(&str, &str, i32)> = extra::get_tags();
@@ -337,6 +353,199 @@ pub fn advanced_search() -> Option<(String, String)> {
     }
 }
 
-pub fn pick_book(result: (String, String), pages: u64, sorting: String) {
+pub fn pick_book(result: (String, String), pages: u64, sorting: String) -> bool {
+    clear();
     let mut page = 1;
+    loop {
+        let url = format!(
+            "https://www.royalroad.com/fictions/search?page={}&{}&{}",
+            page, result.1, sorting
+        );
+        let books = get_search_results(&url);
+        println!(
+            "{}{} - Page {} in {}\n",
+            "Searching for: ".yellow().bold(),
+            result.0.blue().bold(),
+            page,
+            pages
+        );
+        let mut input;
+        enter_to_continue("Enter the book number to read it, exit to go back".to_string());
+        for (i, book) in books.iter().enumerate() {
+            input = String::new();
+            println!(
+                "{}: {}\n{}",
+                (i + 1).to_string().blue().bold(),
+                book.title.blue().bold(),
+                book.description
+            );
+            println!(
+                "Tags: {}\nPages: {}\nChapters: {}\nRating: {}\nViews: {}\n",
+                book.tags.join(", "),
+                book.pages,
+                book.chapters,
+                book.rating,
+                book.views
+            );
+            std::io::stdin().read_line(&mut input).unwrap();
+            if input.trim() == "exit" {
+                return false;
+            } else if input.trim() == "" {
+                continue;
+            } else {
+                match input.trim().parse::<usize>() {
+                    Ok(num) => {
+                        if num > 0 && num <= books.len() {
+                            load_book(books.get(num - 1).unwrap());
+                            return false;
+                        }
+                    }
+                    Err(_) => {
+                        enter_to_continue("Invalid input".to_string());
+                        continue;
+                    }
+                }
+            }
+        }
+        loop {
+            println!("Enter > to go to next page, < to go to previous page, exit to go back or book number to read it");
+            input = String::new();
+            std::io::stdin().read_line(&mut input).unwrap();
+            if input.trim() == "exit" {
+                return false;
+            } else if input.trim() == ">" {
+                if page == pages {
+                    enter_to_continue("No more pages".to_string());
+                    continue;
+                }
+                page += 1;
+                break;
+            } else if input.trim() == "<" {
+                if page == 1 {
+                    enter_to_continue("No previous pages".to_string());
+                    continue;
+                }
+                page -= 1;
+                break;
+            } else {
+                match input.trim().parse::<usize>() {
+                    Ok(num) => {
+                        if num > 0 && num <= books.len() {
+                            load_book(books.get(num - 1).unwrap());
+                            return true;
+                        }
+                    }
+                    Err(_) => {
+                        enter_to_continue("Invalid input".to_string());
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn load_book(book: &Fiction) {
+    let current_config: SessionConfig =
+        confy::load("rrl_cli_reader", "SessionConfig").unwrap_or_default();
+
+    let chapters = getting::get_chapters(book.id.clone(), true).unwrap();
+}
+
+fn get_search_results(url: &str) -> Vec<Fiction> {
+    let response = reqwest::blocking::get(url).unwrap();
+    let soup = soup::Soup::new(&response.text().unwrap());
+    let books_unfiltered = soup
+        .tag("div")
+        .attr("class", "row fiction-list-item")
+        .find_all();
+    let mut books: Vec<Fiction> = vec![];
+    for book in books_unfiltered {
+        let title = book
+            .tag("h2")
+            .attr("class", "fiction-title")
+            .find()
+            .unwrap()
+            .text();
+        let id = book
+            .tag("a")
+            .attr("class", "font-red-sunglo bold")
+            .find()
+            .unwrap()
+            .get("href")
+            .unwrap()
+            .split("/")
+            .collect::<Vec<&str>>()
+            .get(2)
+            .unwrap()
+            .to_string();
+        let desc = book
+            .tag("div")
+            .attr("id", format!("description-{}", id))
+            .find()
+            .unwrap()
+            .text();
+        let tags = book
+            .tag("span")
+            .attr("class", "tags")
+            .find()
+            .unwrap()
+            .tag("a")
+            .find_all()
+            .into_iter()
+            .map(|tag| tag.text())
+            .collect::<Vec<String>>();
+        let mut row_stats = book
+            .tag("div")
+            .attr("class", "row stats")
+            .find()
+            .unwrap()
+            .tag("div")
+            .find_all()
+            .map(|tag| tag.text())
+            .collect::<Vec<String>>();
+        row_stats.pop();
+        let pages = row_stats
+            .iter()
+            .find(|txt: &&String| txt.contains("Pages"))
+            .unwrap()
+            .replace(" Pages", "")
+            .parse::<u64>()
+            .unwrap();
+        let views = row_stats
+            .iter()
+            .find(|txt: &&String| txt.contains("Views"))
+            .unwrap()
+            .replace(" Views", "")
+            .parse::<u64>()
+            .unwrap();
+        let chapters = row_stats
+            .iter()
+            .find(|txt: &&String| txt.contains("Chapters"))
+            .unwrap()
+            .replace(" Chapters", "")
+            .parse::<u64>()
+            .unwrap();
+        let ratings = book
+            .tag("span")
+            .attr("class", "font-red-sunglo star")
+            .find()
+            .unwrap()
+            .get("title")
+            .unwrap()
+            .parse::<f32>()
+            .unwrap();
+
+        books.push(Fiction {
+            id,
+            title,
+            tags,
+            description: desc,
+            pages: pages,
+            chapters: chapters,
+            rating: ratings,
+            views: views,
+        });
+    }
+    books
 }
