@@ -352,12 +352,15 @@ pub fn advanced_search() -> Option<(String, String)> {
 pub fn pick_book(result: (String, String), pages: u64, sorting: String) -> bool {
     clear();
     let mut page = 1;
+    let mut moved_page;
     loop {
+        moved_page = false;
         let url = format!(
             "https://www.royalroad.com/fictions/search?page={}&{}&{}",
             page, result.1, sorting
         );
         let books = get_search_results(&url);
+        clear();
         println!(
             "{}{} - Page {} in {}\n",
             "Searching for: ".yellow().bold(),
@@ -376,11 +379,16 @@ pub fn pick_book(result: (String, String), pages: u64, sorting: String) -> bool 
                 book.description
             );
             println!(
-                "Tags: {}\nPages: {}\nChapters: {}\nRating: {}\nViews: {}\n",
+                "\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n",
+                "Tags: ".blue().bold(),
                 book.tags.join(", "),
+                "Pages: ".blue().bold(),
                 book.pages,
+                "Chapters: ".blue().bold(),
                 book.chapters,
+                "Rating: ".blue().bold(),
                 book.rating,
+                "Views: ".blue().bold(),
                 book.views
             );
             std::io::stdin().read_line(&mut input).unwrap();
@@ -388,6 +396,22 @@ pub fn pick_book(result: (String, String), pages: u64, sorting: String) -> bool 
                 return false;
             } else if input.trim() == "" {
                 continue;
+            } else if input.trim() == ">" {
+                if page == pages {
+                    enter_to_continue("No more pages".to_string());
+                    continue;
+                }
+                page += 1;
+                moved_page = true;
+                break;
+            } else if input.trim() == "<" {
+                if page == 1 {
+                    enter_to_continue("No previous pages".to_string());
+                    continue;
+                }
+                page -= 1;
+                moved_page = true;
+                break;
             } else {
                 match input.trim().parse::<usize>() {
                     Ok(num) => {
@@ -402,6 +426,9 @@ pub fn pick_book(result: (String, String), pages: u64, sorting: String) -> bool 
                     }
                 }
             }
+        }
+        if moved_page {
+            continue;
         }
         loop {
             println!("Enter > to go to next page, < to go to previous page, exit to go back or book number to read it");
