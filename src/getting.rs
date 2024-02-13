@@ -21,14 +21,13 @@ pub fn search() -> Option<Vec<Chapter>> {
         println!("8: Search by status");
         println!("9: Go back");
         let mut option = String::new();
-        println!("Enter option: ");
+        println!("Enter option: (default is title)");
         std::io::stdin()
             .read_line(&mut option)
             .expect("Failed to read line");
-        option = option.trim().to_string();
-        match option.as_str() {
+        match option.trim() {
             "1" => result = search::advanced_search(),
-            "2" => result = search::search_by_title(),
+            "2" | "" => result = search::search_by_title(),
             "3" => result = search::search_by_keywords(),
             "4" => result = search::search_by_author(),
             "5" => result = search::search_by_tag(),
@@ -84,7 +83,7 @@ pub fn get_chapters(book_id: String, new_book: bool) -> Result<Vec<Chapter>, u8>
     let soup = Soup::new(&response.text().unwrap());
     if soup
         .tag("div")
-        .attr("class", "number font-red-sunglo")
+        .attr("class", "font-red-sunglo")
         .find()
         .is_some()
     {
@@ -118,7 +117,7 @@ pub fn get_chapters(book_id: String, new_book: bool) -> Result<Vec<Chapter>, u8>
     let new_chapter_num = if new_book {
         which_chapter(&chapters, title.clone())
     } else {
-        Some(0)
+        Some(current_config.chapter_num)
     };
     if new_chapter_num.is_none() {
         return Err(1);
@@ -202,4 +201,44 @@ pub fn get_num_of_pages(url_segment: &str) -> u64 {
         .unwrap()
         .parse::<u64>()
         .unwrap()
+}
+
+pub fn get_soup(url: &str) -> Soup {
+    let response = reqwest::blocking::get(url).unwrap();
+    Soup::new(&response.text().unwrap())
+}
+
+pub fn get_chapter_content(soup: &Soup) -> Vec<String> {
+    let chapter_content_raw = soup
+        .tag("div")
+        .attr("class", "chapter-content")
+        .find()
+        .unwrap()
+        .text();
+    let chapter_content_split = chapter_content_raw.split("\n");
+
+    let mut chapter_content_filtered: Vec<String> = chapter_content_split
+        .filter(|txt| txt.trim() != "")
+        .map(|txt| txt.trim().to_owned())
+        .collect();
+    let mut chapter;
+    if chapter_content_filtered.len() == 1 {
+        chapter = soup
+            .tag("div")
+            .attr("class", "chapter-content")
+            .find()
+            .unwrap()
+            .text();
+        chapter = chapter.replace("\r", "\n ").replace(". ", ".\n ");
+        let chapter_content_split: Vec<String> = chapter
+            .split("\n")
+            .map(|txt| txt.trim().to_owned())
+            .collect();
+        chapter_content_filtered = chapter_content_split
+            .iter()
+            .filter(|txt| txt.trim() != "")
+            .map(|txt| txt.trim().to_owned())
+            .collect();
+    }
+    chapter_content_filtered.clone()
 }

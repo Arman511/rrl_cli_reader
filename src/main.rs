@@ -1,6 +1,5 @@
 use colored::{Color, Colorize};
 use serde::{Deserialize, Serialize};
-use soup::{NodeExt, QueryBuilderExt};
 
 mod extra;
 mod getting;
@@ -73,20 +72,19 @@ fn main() {
 }
 
 fn read_chapters(chapters: Vec<Chapter>, mut config: SessionConfig) {
+    let mut changed_chapter;
     loop {
+        changed_chapter = false;
         clear();
         let url = format!(
             "https://www.royalroad.com{}",
             chapters[config.chapter_num as usize].url
         );
-        let response = reqwest::blocking::get(url);
-        if response.is_err() {
-            enter_to_continue("Failed to fetch chapter".to_string());
-            continue;
-        }
+
+        let soup = getting::get_soup(&url);
         println!(
             "{}",
-            "Press enter to work through the page and type exit and enter to go back to main menu\n"
+            "Press enter to work through the page, type index to change chapter and type exit and enter to go back to main menu\n"
                 .red()
                 .bold()
         );
@@ -103,25 +101,46 @@ fn read_chapters(chapters: Vec<Chapter>, mut config: SessionConfig) {
             config.chapter_num + 1,
             chapters.len()
         );
-        let soup = soup::Soup::new(&response.unwrap().text().unwrap());
-        let chapter_content = soup
-            .tag("div")
-            .attr("class", "chapter-content")
-            .find()
-            .unwrap()
-            .tag("p")
-            .find_all();
         let mut input;
+        let chapter_content = getting::get_chapter_content(&soup);
         for content in chapter_content {
             input = String::new();
-            println!(
-                "{}",
-                content.text().color(Color::from(config.color.clone()))
-            );
+            println!("{}", content.color(Color::from(config.color.clone())));
             std::io::stdin().read_line(&mut input).unwrap();
             if input.trim() == "exit" {
                 return;
+            } else if input.trim() == "index" {
+                let new_chapter_num = getting::which_chapter(&chapters, config.book_name.clone());
+                match new_chapter_num {
+                    Some(num) => {
+                        config.chapter_num = num;
+                        changed_chapter = true;
+                        break;
+                    }
+                    None => {
+                        continue;
+                    }
+                }
+            } else if input.trim() == "<" {
+                if config.chapter_num > 0 {
+                    config.chapter_num -= 1;
+                    changed_chapter = true;
+                    break;
+                } else {
+                    enter_to_continue("No previous chapters".to_string());
+                }
+            } else if input.trim() == ">" {
+                if config.chapter_num + 1 < chapters.len() as u64 {
+                    config.chapter_num += 1;
+                    changed_chapter = true;
+                    break;
+                } else {
+                    enter_to_continue("No more chapters".to_string());
+                }
             }
+        }
+        if changed_chapter {
+            continue;
         }
 
         loop {
