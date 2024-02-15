@@ -1,6 +1,5 @@
 use colored::{Color, Colorize};
 use serde::{Deserialize, Serialize};
-
 mod extra;
 mod getting;
 mod search;
